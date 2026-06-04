@@ -207,7 +207,12 @@ app.get('/api/recruits', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', mongodb: mongoose.connection.readyState === 1 });
 });
-
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    message: 'K9x API is running'
+  });
+});
 app.listen(PORT, () => {
   console.log('K9x Server running on http://localhost:' + PORT);
 });
