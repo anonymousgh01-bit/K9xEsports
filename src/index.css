@@ -1,0 +1,36 @@
+/* Reset & Base */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+/* Discord & TikTok Icons - Add to index.css */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-dark: #0a0a0a;
+  --ghana-red: #CF0921;
+  --ghana-gold: #FACC15;
+  --ghana-green: #006B3D;
+  --gold-glow: rgba(250, 204, 21, 0.4);
+  --text-white: #ffffff;
+  --text-gray: #9ca3af;
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Outfit', sans-serif;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-white);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+a, button { cursor: pointer; }
+ul { list-style: none; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: var(--ghana-gold); border-radius: 3px; }

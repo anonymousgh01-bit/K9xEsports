@@ -1,0 +1,22 @@
+{
+  "name": "k9x-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "csurf": "^1.11.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "express-rate-limit": "^8.5.2",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.2.0",
+    "mongoose": "^9.6.3",
+    "nodemailer": "^6.10.1",
+    "sanitize-html": "^2.17.4",
+    "xss": "^1.0.15"
+  }
+}

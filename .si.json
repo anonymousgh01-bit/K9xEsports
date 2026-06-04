@@ -1,0 +1,22 @@
+{
+  "plugin": "org.smartide.plugin.editor",
+  "run": "echo 'change command from .si.json file'",
+  "intelligence": {
+    ".css": {
+      "enabled": true,
+      "run": "vscode-css-language-server --stdio"
+    },
+    ".jsx": {
+      "enabled": true,
+      "run": "typescript-language-server --stdio"
+    },
+    ".json": {
+      "enabled": true,
+      "run": "vscode-json-language-server --stdio"
+    },
+    ".js": {
+      "enabled": true,
+      "run": "typescript-language-server --stdio"
+    }
+  }
+}
