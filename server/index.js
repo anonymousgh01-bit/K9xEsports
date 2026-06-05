@@ -169,13 +169,31 @@ const validateApplication = [
 ];
 
 app.post('/api/apply', validateApplication, async (req, res) => {
+  console.log('Incoming application:', req.body);
+
   try {
     const errors = validationResult(req);
+
     if (!errors.isEmpty()) {
-      return res.status(400).json({ error: 'Invalid input' });
+      console.log('Validation Errors:', errors.array());
+
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
     }
 
-    const { pubgName, pubgUid, age, rank, device, whatsapp, discord, tiktok, why } = req.body;
+    const {
+      pubgName,
+      pubgUid,
+      age,
+      rank,
+      device,
+      whatsapp,
+      discord,
+      tiktok,
+      why
+    } = req.body;
 
     const recruit = new Recruit({
       pubgName: sanitizeInput(pubgName),
@@ -186,36 +204,50 @@ app.post('/api/apply', validateApplication, async (req, res) => {
       whatsapp: sanitizeInput(whatsapp),
       discord: sanitizeInput(discord) || undefined,
       tiktok: sanitizeInput(tiktok) || undefined,
-      why: sanitizeInput(why),
+      why: sanitizeInput(why)
     });
-    
+
     await recruit.save();
-    console.log('Saved:', pubgName);
+
+    console.log('Saved:', recruit._id);
 
     if (process.env.GMAIL_EMAIL && process.env.GMAIL_APP_PASSWORD) {
-      const mailOptions = {
-        from: process.env.GMAIL_EMAIL,
-        to: process.env.GMAIL_EMAIL,
-        subject: '⚔️ ' + pubgName + ' [' + rank + '] - K9x Application',
-        html: createEmailHtml({ pubgName, pubgUid, age, rank, device, whatsapp, discord, tiktok, why })
-      };
-      await transporter.sendMail(mailOptions);
-      console.log('Email sent');
+      try {
+        await transporter.sendMail({
+          from: process.env.GMAIL_EMAIL,
+          to: process.env.GMAIL_EMAIL,
+          subject: `⚔️ ${pubgName} [${rank}] - K9x Application`,
+          html: createEmailHtml({
+            pubgName,
+            pubgUid,
+            age,
+            rank,
+            device,
+            whatsapp,
+            discord,
+    
+            why
+          })
+        });
+
+        console.log('Email sent');
+      } catch (mailError) {
+        console.error('Email Error:', mailError);
+      }
     }
 
-    res.status(200).json({ success: true, message: 'Application submitted!' });
-  } catch (error) {
-    console.log('Error:', error.message);
-    res.status(500).json({ error: 'Failed to submit' });
-  }
-});
+    return res.status(200).json({
+      success: true,
+      message: 'Application submitted!'
+    });
 
-app.get('/api/recruits', async (req, res) => {
-  try {
-    const recruits = await Recruit.find().sort({ createdAt: -1 }).limit(100);
-    res.status(200).json(recruits);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch' });
+    console.error('Apply Error:', error);
+
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 
