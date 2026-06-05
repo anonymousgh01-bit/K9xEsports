@@ -116,11 +116,11 @@ function RecruitModal({ isOpen, onClose }) {
         why: form.why.value,
       };
 
-      const response = await fetch('/api/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+      const response = await fetch('https://k9xesports.onrender.com/api/apply', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(formData)
+});
 
       const result = await response.json();
 
