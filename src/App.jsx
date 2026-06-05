@@ -224,7 +224,7 @@ function RecruitModal({ isOpen, onClose }) {
             <div className="success-icon">✓</div>
             <h3>🎉 Welcome to K9x!</h3>
             <p>Your application has been received.</p>
-            <p className="link-hint">Join Discord for updates: <a href="https://discord.gg/k9x" target="_blank">discord.gg/k9x</a></p>
+            <p className="link-hint">Join Discord for updates: <a href="https://discord.gg/kvNWSXTzU" target="_blank">discord.gg/k9x</a></p>
           </div>
         )}
       </div>
@@ -242,7 +242,7 @@ function Footer() {
       <p>© 2026 K9x Esports. All rights reserved.</p>
       
       <div className="footer-social">
-        <a href="https://discord.gg/k9x" target="_blank" rel="noopener noreferrer" className="social-link social-discord" title="Join Discord">
+        <a href="https://discord.gg/kvNWSXTzU" target="_blank" rel="noopener noreferrer" className="social-link social-discord" title="Join Discord">
           <i className="fab fa-discord"></i>
         </a>
         <a href="https://tiktok.com/@k9xesports" target="_blank" rel="noopener noreferrer" className="social-link social-tiktok" title="Follow TikTok">
