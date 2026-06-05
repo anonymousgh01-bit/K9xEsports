@@ -2,10 +2,6 @@ import { useState, useEffect } from 'react';
 import './index.css';
 import './App.css';
 
-// ========================
-// COMPONENTS
-// ========================
-
 function Navbar({ onJoin }) {
   return (
     <nav className="navbar">
@@ -68,19 +64,6 @@ function Hero({ onJoin }) {
       <button className="hero-btn" onClick={onJoin}>
         Join K9x
       </button>
-      
-      {/* Social Links */}
-      <div className="social-links">
-        <a href="https://discord.gg/k9x" target="_blank" rel="noopener noreferrer" className="social-link social-discord" title="Join Discord">
-          <i className="fab fa-discord"></i>
-        </a>
-        <a href="https://tiktok.com/@k9xesports" target="_blank" rel="noopener noreferrer" className="social-link social-tiktok" title="Follow TikTok">
-          <i className="fab fa-tiktok"></i>
-        </a>
-        <a href="https://wa.me/233500000000" target="_blank" rel="noopener noreferrer" className="social-link social-whatsapp" title="WhatsApp">
-          <i className="fab fa-whatsapp"></i>
-        </a>
-      </div>
     </section>
   );
 }
@@ -115,52 +98,67 @@ function RecruitModal({ isOpen, onClose }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-// CHANGE THIS:
-const API_URL = 'https://k9xesports.onrender.com';
-
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  e.preventDefault();
+  setIsSubmitting(true);
 
-    try {
-      const form = e.target;
-      const formData = {
-        pubgName: form.pubgName.value,
-        pubgUid: form.pubgUid.value,
-        age: form.age.value,
-        rank: form.rank.value,
-        device: form.device.value,
-        whatsapp: form.whatsapp.value,
-        discord: form.discord?.value || '',
-        tiktok: form.tiktok?.value || '',
-        why: form.why.value,
-      };
+  try {
+    const form = e.target;
 
-      const response = await fetch(`${API_URL}/api/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+    const formData = {
+      pubgName: form.pubgName.value,
+      pubgUid: form.pubgUid.value,
+      age: form.age.value,
+      rank: form.rank.value,
+      device: form.device.value,
+      whatsapp: form.whatsapp.value,
+      discord: form.discord?.value || '',
+      tiktok: form.tiktok?.value || '',
+      why: form.why.value,
+    };
 
-      const result = await response.json();
+    const API_URL = 'https://k9xesports.onrender.com';
 
-      if (result.success) {
-        setIsSuccess(true);
-        setTimeout(() => {
-          setIsSuccess(false);
-          onClose();
-          form.reset();
-        }, 2500);
-      } else {
-        alert('Submission failed. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Could not connect to server. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+    const response = await fetch(`${API_URL}/api/apply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+    });
+
+    const result = await response.json();
+
+    console.log('Server Response:', result);
+
+    if (response.ok && result.success) {
+      setIsSuccess(true);
+
+      setTimeout(() => {
+        setIsSuccess(false);
+        onClose();
+        form.reset();
+      }, 2500);
+    } else {
+      alert(result.error || 'Submission failed.');
     }
-  };
+  } catch (error) {
+    console.error('Connection Error:', error);
+
+    alert(
+      `Connection Error
+
+${error.message}
+
+Make sure:
+1. Backend is running
+2. Backend is on port 3001
+3. CORS is configured correctly`
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   if (!isOpen) return null;
 
@@ -214,21 +212,9 @@ const API_URL = 'https://k9xesports.onrender.com';
                 <div className="form-group full">
                   <select name="device" className="form-select" required defaultValue="">
                     <option value="" disabled>Select Device</option>
-                    <option value="iPhone 15 Pro Max">iPhone 15 Pro Max</option>
-                    <option value="iPhone 15 Pro">iPhone 15 Pro</option>
-                    <option value="iPhone 15">iPhone 15</option>
-                    <option value="iPhone 14 Pro Max">iPhone 14 Pro Max</option>
-                    <option value="iPhone 14 Pro">iPhone 14 Pro</option>
-                    <option value="iPhone 14">iPhone 14</option>
-                    <option value="iPhone 13 Pro Max">iPhone 13 Pro Max</option>
-                    <option value="iPhone 13 Pro">iPhone 13 Pro</option>
-                    <option value="iPhone 13">iPhone 13</option>
-                    <option value="iPhone SE">iPhone SE</option>
-                    <option value="iPad Pro">iPad Pro</option>
-                    <option value="iPad Air">iPad Air</option>
-                    <option value="Android Phone">Android Phone</option>
-                    <option value="Android Tablet">Android Tablet</option>
-                    <option value="Emulator">Emulator</option>
+                    <option value="iPhone">iPhone</option>
+                    <option value="Android">Android</option>
+                    <option value="Tablet">Tablet</option>
                   </select>
                   <span className="input-icon">📱</span>
                 </div>
@@ -240,21 +226,9 @@ const API_URL = 'https://k9xesports.onrender.com';
                 </div>
 
                 <div className="form-group full">
-                  <input type="text" name="discord" className="form-input" placeholder=" " />
-                  <i className="input-icon fab fa-discord" style={{fontSize: '16px'}}></i>
-                  <label className="float-label">Discord (Optional)</label>
-                </div>
-
-                <div className="form-group full">
-                  <input type="text" name="tiktok" className="form-input" placeholder=" " />
-                  <i className="input-icon fab fa-tiktok" style={{fontSize: '16px'}}></i>
-                  <label className="float-label">TikTok (Optional)</label>
-                </div>
-
-                <div className="form-group full">
                   <textarea name="why" className="form-input" placeholder=" " required></textarea>
                   <span className="input-icon" style={{top: '18px'}}>💙</span>
-                  <label className="float-label">Why K9x?</label>
+                  <label className="float-label">Why do you want to join K9x?</label>
                 </div>
               </div>
 
@@ -268,7 +242,7 @@ const API_URL = 'https://k9xesports.onrender.com';
             <div className="success-icon">✓</div>
             <h3>🎉 Welcome to K9x!</h3>
             <p>Your application has been received.</p>
-            <p className="link-hint">Join Discord: <a href="https://discord.gg/k9x" target="_blank">discord.gg/k9x</a></p>
+            <p className="link-hint">Join Discord for updates: <a href="https://discord.gg/k9x" target="_blank">discord.gg/k9x</a></p>
           </div>
         )}
       </div>
@@ -286,14 +260,14 @@ function Footer() {
       <p>© 2026 K9x Esports. All rights reserved.</p>
       
       <div className="footer-social">
-        <a href="https://discord.gg/k9x" target="_blank" rel="noopener noreferrer" className="social-link social-discord">
+        <a href="https://discord.gg/k9x" target="_blank" rel="noopener noreferrer" className="social-link social-discord" title="Join Discord">
           <i className="fab fa-discord"></i>
         </a>
-        <a href="https://tiktok.com/@k9xesports" target="_blank" rel="noopener noreferrer" className="social-link social-tiktok">
+        <a href="https://tiktok.com/@k9xesports" target="_blank" rel="noopener noreferrer" className="social-link social-tiktok" title="Follow TikTok">
           <i className="fab fa-tiktok"></i>
         </a>
-        <a href="https://wa.me/233500000000" target="_blank" rel="noopener noreferrer" className="social-link social-whatsapp">
-          <i className="fab fa-whatsapp"></i>
+        <a href="https://youtube.com/k9xEsports" target="_blank" rel="noopener noreferrer" className="social-link social-youtube" title="YouTube Channel">
+          <i className="fab fa-youtube"></i>
         </a>
       </div>
     </footer>
