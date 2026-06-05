@@ -115,8 +115,8 @@ function RecruitModal({ isOpen, onClose }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // CHANGE THIS to your Render backend URL
-  const API_URL = 'https://k9x-backend.onrender.com';
+// CHANGE THIS:
+const API_URL = 'https://k9xesports.onrender.com';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
