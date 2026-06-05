@@ -7,8 +7,8 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS
-app.use(cors());
+// CORS - Allow all origins
+app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '10kb' }));
 
 // MongoDB Schema
@@ -77,7 +77,25 @@ function sanitize(s) {
   return s.trim().substring(0, 100).replace(/[<>]/g, '');
 }
 
-// API Routes
+// ========================
+// ROUTES
+// ========================
+
+// ROOT ROUTE - This fixes "Cannot GET /"
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'K9x Backend is running!',
+    version: '1.0.0'
+  });
+});
+
+// HEALTH CHECK
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', mongodb: mongoose.connection.readyState === 1 });
+});
+
+// APPLY POST
 app.post('/api/apply', async (req, res) => {
   try {
     const { pubgName, pubgUid, age, rank, device, whatsapp, discord, tiktok, why } = req.body;
@@ -119,7 +137,7 @@ app.post('/api/apply', async (req, res) => {
   }
 });
 
-// Get all recruits
+// GET RECRUITS
 app.get('/api/recruits', async (req, res) => {
   try {
     const recruits = await Recruit.find().sort({ createdAt: -1 }).limit(100);
@@ -129,11 +147,7 @@ app.get('/api/recruits', async (req, res) => {
   }
 });
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
+// START SERVER
 app.listen(PORT, () => {
   console.log('K9x Backend running on port:', PORT);
 });
