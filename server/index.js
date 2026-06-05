@@ -23,12 +23,26 @@ app.use(helmet({
   },
 }));
 
-const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000'],
+const allowedOrigins = (
+  process.env.ALLOWED_ORIGINS ||
+  'http://localhost:5173,http://localhost:3000,https://your-vercel-app.vercel.app'
+).split(',');
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.log('Blocked Origin:', origin);
+    return callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
-};
-app.use(cors(corsOptions));
+  credentials: true
+}));
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
