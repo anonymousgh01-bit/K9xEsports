@@ -19,10 +19,10 @@ const VALID_DEVICES = ['iPhone', 'Android', 'Tablet'];
 // ========================
 
 // Trust Render's proxy so express-rate-limit can read the real client IP
-// from the X-Forwarded-For header without throwing a validation error
 app.set('trust proxy', 1);
 
-app.use(cors({ origin: '*' }));
+// FIX: Lock CORS to your deployed frontend domain instead of wildcard
+app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json({ limit: '10kb' }));
 
 // Rate limiting on the apply endpoint to prevent spam
@@ -31,7 +31,7 @@ const applyLimiter = rateLimit({
   max: 5,                    // max 5 applications per IP per window
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { xForwardedForHeader: false }, // silences the warning — trust proxy handles this
+  validate: { xForwardedForHeader: false },
   message: { error: 'Too many applications from this IP. Please try again later.' }
 });
 
@@ -45,7 +45,6 @@ const recruitSchema = new mongoose.Schema({
   rank:      { type: String, required: true, enum: VALID_RANKS },
   device:    { type: String, required: true, enum: VALID_DEVICES },
   whatsapp:  { type: String, required: true, maxlength: 20 },
-  // FIX: why is required in the route, so mark it required in schema too
   why:       { type: String, required: true, maxlength: 500 },
   status:    { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
@@ -60,7 +59,6 @@ const connectWithRetry = () => {
   mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('✅ MongoDB Connected'))
     .catch(err => {
-      // FIX: Retry connection instead of silently continuing
       console.error('❌ MongoDB connection failed:', err.message);
       console.log('⏳ Retrying in 5 seconds...');
       setTimeout(connectWithRetry, 5000);
@@ -128,7 +126,6 @@ function createEmailHtml(data) {
 
 // ========================
 // SANITIZE
-// FIX: maxlength now matches schema (500 for `why`, 100 for others)
 // ========================
 function sanitize(s, maxLen = 100) {
   if (typeof s !== 'string') return s;
@@ -147,54 +144,68 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', mongodb: mongoose.connection.readyState === 1 });
 });
 
-// FIX: Apply rate limiter to this route
 app.post('/api/apply', applyLimiter, async (req, res) => {
   try {
     const { pubgName, pubgUid, age, rank, device, whatsapp, why } = req.body;
 
-    // FIX: Validate all required fields including age, rank, and device
+    // Validate all required fields are present
     if (!pubgName || !pubgUid || !whatsapp || !why || !rank || !device || age == null) {
       return res.status(400).json({ error: 'Missing required fields.' });
     }
 
+    // Validate age
     const numAge = Number(age);
     if (isNaN(numAge) || numAge < 16 || numAge > 40) {
       return res.status(400).json({ error: 'Age must be between 16 and 40.' });
     }
 
+    // Validate rank and device against allowed values
     if (!VALID_RANKS.includes(rank)) {
       return res.status(400).json({ error: 'Invalid rank value.' });
     }
-
     if (!VALID_DEVICES.includes(device)) {
       return res.status(400).json({ error: 'Invalid device value.' });
     }
 
-    // FIX: Sanitize all fields with correct max lengths BEFORE using them
+    // Sanitize all string fields
     const sanitizedData = {
       pubgName: sanitize(pubgName, 50),
       pubgUid:  sanitize(pubgUid, 20),
       age:      numAge,
-      rank,     // already validated against enum
-      device,   // already validated against enum
+      rank,
+      device,
       whatsapp: sanitize(whatsapp, 20),
-      why:      sanitize(why, 500),  // FIX: was 100, now correctly 500
+      why:      sanitize(why, 500),
     };
+
+    // FIX: Validate pubgUid format server-side (mirrors frontend pattern)
+    if (!/^\d{8,}$/.test(sanitizedData.pubgUid)) {
+      return res.status(400).json({ error: 'UID must be at least 8 digits and contain only numbers.' });
+    }
+
+    // FIX: Validate WhatsApp number format
+    if (!/^\+?\d{7,15}$/.test(sanitizedData.whatsapp)) {
+      return res.status(400).json({ error: 'Invalid WhatsApp number. Use digits only, optionally starting with +.' });
+    }
 
     // Save to MongoDB
     const recruit = new Recruit(sanitizedData);
     await recruit.save();
     console.log('✅ Saved:', sanitizedData.pubgName);
 
-    // FIX: Send email using sanitized data (not raw req.body)
-    if (process.env.GMAIL_EMAIL && process.env.GMAIL_APP_PASSWORD) {
-      await transporter.sendMail({
-        from: process.env.GMAIL_EMAIL,
-        to: process.env.GMAIL_EMAIL,
-        subject: `⚔️ ${sanitizedData.pubgName} [${sanitizedData.rank}] - K9x Application`,
-        html: createEmailHtml(sanitizedData)
-      });
-      console.log('📧 Email sent');
+    // FIX: Email is best-effort — a failure here won't 500 the user
+    try {
+      if (process.env.GMAIL_EMAIL && process.env.GMAIL_APP_PASSWORD) {
+        await transporter.sendMail({
+          from: process.env.GMAIL_EMAIL,
+          to: process.env.GMAIL_EMAIL,
+          subject: `⚔️ ${sanitizedData.pubgName} [${sanitizedData.rank}] - K9x Application`,
+          html: createEmailHtml(sanitizedData)
+        });
+        console.log('📧 Email sent');
+      }
+    } catch (emailErr) {
+      console.error('📧 Email failed (recruit still saved):', emailErr.message);
     }
 
     res.status(200).json({ success: true, message: 'Application submitted!' });
@@ -204,7 +215,11 @@ app.post('/api/apply', applyLimiter, async (req, res) => {
   }
 });
 
+// FIX: Protected with admin key — add ADMIN_KEY to your .env
 app.get('/api/recruits', async (req, res) => {
+  if (req.headers['x-admin-key'] !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized.' });
+  }
   try {
     const recruits = await Recruit.find().sort({ createdAt: -1 }).limit(100);
     res.status(200).json(recruits);
