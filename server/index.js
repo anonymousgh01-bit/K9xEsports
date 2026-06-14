@@ -19,9 +19,7 @@ const recruitSchema = new mongoose.Schema({
   rank: { type: String, required: true },
   device: { type: String, required: true, maxlength: 50 },
   whatsapp: { type: String, required: true, maxlength: 20 },
-  discord: { type: String, maxlength: 50 },
-  tiktok: { type: String, maxlength: 30 },
-  why: { type: String, required: true, maxlength: 500 },
+  why: { type: String, required: false, maxlength: 500 },
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });
@@ -98,7 +96,7 @@ app.get('/api/health', (req, res) => {
 // APPLY POST
 app.post('/api/apply', async (req, res) => {
   try {
-    const { pubgName, pubgUid, age, rank, device, whatsapp, discord, tiktok, why } = req.body;
+    const { pubgName, pubgUid, age, rank, device, whatsapp, why } = req.body;
 
     if (!pubgName || !pubgUid || !whatsapp || !why) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -112,8 +110,6 @@ app.post('/api/apply', async (req, res) => {
       rank,
       device: sanitize(device),
       whatsapp: sanitize(whatsapp),
-      discord: sanitize(discord) || undefined,
-      tiktok: sanitize(tiktok) || undefined,
       why: sanitize(why),
     });
     await recruit.save();
@@ -125,7 +121,7 @@ app.post('/api/apply', async (req, res) => {
         from: process.env.GMAIL_EMAIL,
         to: process.env.GMAIL_EMAIL,
         subject: '⚔️ ' + pubgName + ' [' + rank + '] - K9x Application',
-        html: createEmailHtml({ pubgName, pubgUid, age, rank, device, whatsapp, discord, tiktok, why })
+        html: createEmailHtml({ pubgName, pubgUid, age, rank, device, whatsapp,why })
       });
       console.log('Email sent');
     }
