@@ -539,6 +539,7 @@ function RecruitModal({ isOpen, onClose }) {
   const [charging, setCharging] = useState(false);
   const [sparks, setSparks] = useState(false);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
@@ -547,12 +548,14 @@ function RecruitModal({ isOpen, onClose }) {
       setCharging(false);
       setSparks(false);
       setError(null);
+      setRetryCount(0);
     }
   }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setRetryCount(0);
 
     // Trigger charge + spark animation
     setCharging(true);
@@ -567,14 +570,17 @@ function RecruitModal({ isOpen, onClose }) {
 
     if (isNaN(rawAge) || rawAge < 16 || rawAge > 40) {
       setError({ title: 'Invalid Age', msg: 'Age must be between 16 and 40.' });
+      setSubmitting(false);
       return;
     }
     if (!VALID_RANKS.includes(rawRank)) {
       setError({ title: 'Invalid Rank', msg: 'Please select a valid rank.' });
+      setSubmitting(false);
       return;
     }
     if (!VALID_DEVICES.includes(rawDevice)) {
       setError({ title: 'Invalid Device', msg: 'Please select a valid device.' });
+      setSubmitting(false);
       return;
     }
 
@@ -590,53 +596,68 @@ function RecruitModal({ isOpen, onClose }) {
 
     setSubmitting(true);
 
-    // Abort after 20 seconds
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-
-    try {
-      const res = await fetch(`${API_URL}/api/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      let result;
+    // RETRY LOGIC: Try up to 3 times
+    let lastError = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      setRetryCount(attempt);
       try {
-        result = await res.json();
-      } catch {
-        throw new Error(`Server returned status ${res.status} with no JSON body.`);
-      }
-
-      if (res.ok && result.success) {
-        setSuccess(true);
-        form.reset();
-        setTimeout(onClose, 2800);
-      } else {
-        setError({
-          title: 'Submission Failed',
-          msg: result.error || `Server responded with status ${res.status}.`,
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 35000); // Increased to 35 seconds for cold start
+        
+        const res = await fetch(`${API_URL}/api/apply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeout);
+        
+        let result;
+        try {
+          result = await res.json();
+        } catch {
+          throw new Error(`Server returned status ${res.status} with no JSON body.`);
+        }
+        
+        if (res.ok && result.success) {
+          setSuccess(true);
+          form.reset();
+          setTimeout(onClose, 2800);
+          setSubmitting(false);
+          setRetryCount(0);
+          return; // Success - exit retry loop
+        } else {
+          throw new Error(result.error || `Server responded with status ${res.status}.`);
+        }
+        
+      } catch (err) {
+        lastError = err;
+        console.log(`Attempt ${attempt} failed:`, err.message);
+        
+        if (attempt < 3) {
+          // Update error message to show retry status
+          setError({ 
+            title: `Retrying (Attempt ${attempt}/3)`, 
+            msg: `Server is waking up. Please wait ${attempt * 2} seconds...` 
+          });
+          // Wait before retry (2 seconds, then 4 seconds)
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+        }
       }
-    } catch (err) {
-      clearTimeout(timeout);
-      if (err.name === 'AbortError') {
-        setError({
-          title: 'Request Timed Out',
-          msg: 'The server took too long to respond. It may be waking up — please wait 30 seconds and try again.',
-        });
-      } else {
-        setError({
-          title: 'Connection Failed',
-          msg: `Could not reach the server. Check your internet connection and try again.\n\nDetails: ${err.message}`,
-        });
-      }
-    } finally {
-      setSubmitting(false);
     }
+    
+    // All retries failed
+    setSubmitting(false);
+    setRetryCount(0);
+    setError({
+      title: 'Submission Failed',
+      msg: lastError?.message === 'Failed to fetch' 
+        ? 'Server is waking up from sleep. Please wait 30 seconds and try again, or refresh the page.'
+        : lastError?.message === 'The user aborted a request.' && lastError?.name === 'AbortError'
+        ? 'Request timed out (server cold start). Please try again immediately - the second attempt usually works!'
+        : lastError?.message || 'Unknown error occurred. Please try again.'
+    });
   };
 
   if (!isOpen) return null;
@@ -710,7 +731,7 @@ function RecruitModal({ isOpen, onClose }) {
                   <SparkParticles active={sparks} />
                   <span className="btn-text">
                     {submitting
-                      ? <><div className="spinner" /> Transmitting...</>
+                      ? <><div className="spinner" /> {retryCount > 0 ? `Waking server (Attempt ${retryCount}/3)...` : 'Transmitting...'}</>
                       : '⚡ Submit Application'
                     }
                   </span>
@@ -726,8 +747,8 @@ function RecruitModal({ isOpen, onClose }) {
               <p>
                 Application received. We'll reach out via WhatsApp soon.<br /><br />
                 Join our Discord for updates:{' '}
-                <a href="https://discord.gg/YOUR_REAL_INVITE" target="_blank" rel="noopener noreferrer">
-                  discord.gg/k9x
+                <a href="https://discord.gg/k9xesports" target="_blank" rel="noopener noreferrer">
+                  discord.gg/k9xesports
                 </a>
               </p>
             </div>
@@ -744,7 +765,7 @@ function Footer() {
       <div className="footer-logo">K9X ESPORTS</div>
       <p className="footer-copy">© 2026 K9x Esports. All rights reserved.</p>
       <div className="footer-links">
-        <a href="https://discord.gg/YOUR_REAL_INVITE" target="_blank" rel="noopener noreferrer" className="footer-link">Discord</a>
+        <a href="https://discord.gg/k9xesports" target="_blank" rel="noopener noreferrer" className="footer-link">Discord</a>
         <a href="https://tiktok.com/@k9xesports" target="_blank" rel="noopener noreferrer" className="footer-link">TikTok</a>
         <a href="https://youtube.com/k9xEsports" target="_blank" rel="noopener noreferrer" className="footer-link">YouTube</a>
       </div>
