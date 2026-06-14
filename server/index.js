@@ -17,15 +17,21 @@ const VALID_DEVICES = ['iPhone', 'Android', 'Tablet'];
 // ========================
 // MIDDLEWARE
 // ========================
+
+// Trust Render's proxy so express-rate-limit can read the real client IP
+// from the X-Forwarded-For header without throwing a validation error
+app.set('trust proxy', 1);
+
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '10kb' }));
 
-// FIX: Rate limiting on the apply endpoint to prevent spam
+// Rate limiting on the apply endpoint to prevent spam
 const applyLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,                    // max 5 applications per IP per window
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false }, // silences the warning — trust proxy handles this
   message: { error: 'Too many applications from this IP. Please try again later.' }
 });
 
