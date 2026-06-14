@@ -112,8 +112,6 @@ function RecruitModal({ isOpen, onClose }) {
       rank: form.rank.value,
       device: form.device.value,
       whatsapp: form.whatsapp.value,
-      discord: form.discord?.value || '',
-      tiktok: form.tiktok?.value || '',
       why: form.why.value,
     };
 
