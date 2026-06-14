@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './index.css';
 import './App.css';
 
@@ -38,7 +38,15 @@ function Background() {
       <div className="orb orb-3"></div>
       <div className="particles-box">
         {particles.map(p => (
-          <div key={p.id} className="particle" style={{ left: `${p.left}%`, animationDelay: `${p.delay}s`, animationDuration: `${p.duration}s` }} />
+          <div
+            key={p.id}
+            className="particle"
+            style={{
+              left: `${p.left}%`,
+              animationDelay: `${p.delay}s`,
+              animationDuration: `${p.duration}s`
+            }}
+          />
         ))}
       </div>
       <div className="vignette"></div>
@@ -58,7 +66,7 @@ function Hero({ onJoin }) {
         Champions
       </h1>
       <p className="hero-subtitle">
-        Represent Ghana on the global stage. Join the premier PUBG Mobile 
+        Represent Ghana on the global stage. Join the premier PUBG Mobile
         esports organization. Compete, conquer, and bring glory to the homeland.
       </p>
       <button className="hero-btn" onClick={onJoin}>
@@ -94,76 +102,98 @@ function Features() {
   );
 }
 
+const VALID_RANKS = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Crown', 'Ace', 'Conqueror'];
+const VALID_DEVICES = ['iPhone', 'Android', 'Tablet'];
+
 function RecruitModal({ isOpen, onClose }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsSubmitting(true);
+  // FIX: Reset success state when modal reopens
+  useEffect(() => {
+    if (isOpen) {
+      setIsSuccess(false);
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
 
-  try {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
     const form = e.target;
 
+    const rawAge = Number(form.age.value);
+    const rawRank = form.rank.value;
+    const rawDevice = form.device.value;
+
+    // FIX: Client-side validation for age, rank, and device
+    if (isNaN(rawAge) || rawAge < 16 || rawAge > 40) {
+      alert('Age must be between 16 and 40.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!VALID_RANKS.includes(rawRank)) {
+      alert('Please select a valid rank.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!VALID_DEVICES.includes(rawDevice)) {
+      alert('Please select a valid device.');
+      setIsSubmitting(false);
+      return;
+    }
+
     const formData = {
-      pubgName: form.pubgName.value,
-      pubgUid: form.pubgUid.value,
-      age: form.age.value,
-      rank: form.rank.value,
-      device: form.device.value,
-      whatsapp: form.whatsapp.value,
-      why: form.why.value,
+      pubgName: form.pubgName.value.trim(),
+      pubgUid: form.pubgUid.value.trim(),
+      age: rawAge,
+      rank: rawRank,
+      device: rawDevice,
+      whatsapp: form.whatsapp.value.trim(),
+      why: form.why.value.trim(),
     };
 
-    const API_URL = 'https://k9xesports.onrender.com';
+    try {
+      const API_URL = 'https://k9xesports.onrender.com';
 
-    const response = await fetch(`${API_URL}/api/apply`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData),
-    });
+      const response = await fetch(`${API_URL}/api/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-    const result = await response.json();
+      const result = await response.json();
 
-    console.log('Server Response:', result);
-
-    if (response.ok && result.success) {
-      setIsSuccess(true);
-
-      setTimeout(() => {
-        setIsSuccess(false);
-        onClose();
+      if (response.ok && result.success) {
+        setIsSuccess(true);
+        // FIX: Reset form first, then close after delay — avoids resetting unmounted form
         form.reset();
-      }, 2500);
-    } else {
-      alert(result.error || 'Submission failed.');
+        setTimeout(() => {
+          onClose();
+        }, 2500);
+      } else {
+        alert(result.error || 'Submission failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Connection Error:', error);
+      alert(
+        `Connection failed.\n\nPlease check your internet connection and try again.\n\nDetails: ${error.message}`
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (error) {
-    console.error('Connection Error:', error);
-
-    alert(
-      `Connection Error
-
-${error.message}
-
-Make sure:
-1. Backend is running
-2. Backend is on port 3001
-3. CORS is configured correctly`
-    );
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   if (!isOpen) return null;
 
   return (
-    <div className={`modal-overlay ${isOpen ? 'active' : ''}`} onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}>
+    <div
+      className={`modal-overlay ${isOpen ? 'active' : ''}`}
+      onClick={(e) => e.target.classList.contains('modal-overlay') && onClose()}
+    >
       <div className="modal">
-        <button className="modal-close" onClick={onClose}>×</button>
+        <button className="modal-close" onClick={onClose} aria-label="Close modal">×</button>
 
         {!isSuccess ? (
           <>
@@ -181,13 +211,29 @@ Make sure:
                 </div>
 
                 <div className="form-group">
-                  <input type="text" name="pubgUid" className="form-input" placeholder=" " pattern="[0-9]{8,}" title="UID must be at least 8 digits" required />
+                  <input
+                    type="text"
+                    name="pubgUid"
+                    className="form-input"
+                    placeholder=" "
+                    pattern="[0-9]{8,}"
+                    title="UID must be at least 8 digits"
+                    required
+                  />
                   <span className="input-icon">🆔</span>
                   <label className="float-label">PUBG UID</label>
                 </div>
 
                 <div className="form-group">
-                  <input type="number" name="age" className="form-input" placeholder=" " min="16" max="40" required />
+                  <input
+                    type="number"
+                    name="age"
+                    className="form-input"
+                    placeholder=" "
+                    min="16"
+                    max="40"
+                    required
+                  />
                   <span className="input-icon">🎂</span>
                   <label className="float-label">Age</label>
                 </div>
@@ -195,14 +241,9 @@ Make sure:
                 <div className="form-group">
                   <select name="rank" className="form-select" required defaultValue="">
                     <option value="" disabled>Select Rank</option>
-                    <option value="Bronze">Bronze</option>
-                    <option value="Silver">Silver</option>
-                    <option value="Gold">Gold</option>
-                    <option value="Platinum">Platinum</option>
-                    <option value="Diamond">Diamond</option>
-                    <option value="Crown">Crown</option>
-                    <option value="Ace">Ace</option>
-                    <option value="Conqueror">Conqueror</option>
+                    {VALID_RANKS.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
                   </select>
                   <span className="input-icon">⭐</span>
                 </div>
@@ -210,22 +251,22 @@ Make sure:
                 <div className="form-group full">
                   <select name="device" className="form-select" required defaultValue="">
                     <option value="" disabled>Select Device</option>
-                    <option value="iPhone">iPhone</option>
-                    <option value="Android">Android</option>
-                    <option value="Tablet">Tablet</option>
+                    {VALID_DEVICES.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
                   </select>
                   <span className="input-icon">📱</span>
                 </div>
 
                 <div className="form-group full">
                   <input type="tel" name="whatsapp" className="form-input" placeholder=" " required />
-                  <i className="input-icon fab fa-whatsapp" style={{fontSize: '16px'}}></i>
+                  <i className="input-icon fab fa-whatsapp" style={{ fontSize: '16px' }}></i>
                   <label className="float-label">WhatsApp Number</label>
                 </div>
 
                 <div className="form-group full">
                   <textarea name="why" className="form-input" placeholder=" " required></textarea>
-                  <span className="input-icon" style={{top: '18px'}}>💙</span>
+                  <span className="input-icon" style={{ top: '18px' }}>💙</span>
                   <label className="float-label">Why do you want to join K9x?</label>
                 </div>
               </div>
@@ -239,8 +280,14 @@ Make sure:
           <div className="success-box">
             <div className="success-icon">✓</div>
             <h3>🎉 Welcome to K9x!</h3>
-            <p>Your application has been received.</p>
-            <p className="link-hint">Join Discord for updates: <a href="https://discord.gg/k9x" target="_blank">discord.gg/k9x</a></p>
+            <p>Your application has been received. We'll reach out via WhatsApp soon.</p>
+            {/* FIX: Replace placeholder discord link with a real one or remove */}
+            <p className="link-hint">
+              Join our Discord for updates:{' '}
+              <a href="https://discord.gg/YOUR_REAL_INVITE" target="_blank" rel="noopener noreferrer">
+                discord.gg/k9x
+              </a>
+            </p>
           </div>
         )}
       </div>
@@ -256,9 +303,9 @@ function Footer() {
         <span>K9x ESPORTS</span>
       </div>
       <p>© 2026 K9x Esports. All rights reserved.</p>
-      
+
       <div className="footer-social">
-        <a href="https://discord.gg/k9x" target="_blank" rel="noopener noreferrer" className="social-link social-discord" title="Join Discord">
+        <a href="https://discord.gg/YOUR_REAL_INVITE" target="_blank" rel="noopener noreferrer" className="social-link social-discord" title="Join Discord">
           <i className="fab fa-discord"></i>
         </a>
         <a href="https://tiktok.com/@k9xesports" target="_blank" rel="noopener noreferrer" className="social-link social-tiktok" title="Follow TikTok">
@@ -275,21 +322,23 @@ function Footer() {
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // FIX: useCallback so closeModal is stable and safe to use in useEffect deps
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+    document.body.style.overflow = 'auto';
+  }, []);
+
   const openModal = () => {
     setIsModalOpen(true);
     document.body.style.overflow = 'hidden';
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    document.body.style.overflow = 'auto';
-  };
-
+  // FIX: closeModal is now stable (via useCallback), safe to include in deps array
   useEffect(() => {
     const handleEsc = (e) => { if (e.key === 'Escape') closeModal(); };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, []);
+  }, [closeModal]);
 
   return (
     <div className="app">
