@@ -21,7 +21,7 @@
 }
 
 /* =========================================
-   BACKGROUND - IMAGE VISIBLE
+   BACKGROUND
    ========================================= */
 
 .app { min-height: 100vh; position: relative; }
@@ -76,7 +76,12 @@
   animation: floatUp 10s linear infinite;
 }
 
-@keyframes floatUp { 0% { transform: translateY(100vh); opacity: 0; } 10% { opacity: 0.3; } 90% { opacity: 0.3; } 100% { transform: translateY(-20vh); opacity: 0; } }
+@keyframes floatUp {
+  0% { transform: translateY(100vh); opacity: 0; }
+  10% { opacity: 0.3; }
+  90% { opacity: 0.3; }
+  100% { transform: translateY(-20vh); opacity: 0; }
+}
 
 .vignette {
   position: fixed;
@@ -224,27 +229,20 @@
   color: var(--ghana-gold);
 }
 
-/* Discord - Official Colors */
+/* Discord */
 .social-discord { border-color: #5865F2; }
 .social-discord:hover { background: rgba(88, 101, 242, 0.25); border-color: #5865F2; color: #5865F2; }
 
 /* TikTok */
 .social-tiktok:hover { border-color: #fff; background: rgba(255,255,255,0.15); }
 
-/* WhatsApp */
+/* YouTube - FIX: was incorrectly named social-youtube but styled as WhatsApp */
 .social-youtube { border-color: red; }
-.social-youtube:hover { background: rgba(37, 211, 102, 0.25); border-color: red; color: #25D366; }
+.social-youtube:hover { background: rgba(255, 0, 0, 0.2); border-color: red; color: red; }
 
 /* Footer Social */
 .footer-social { display: flex; justify-content: center; gap: 16px; margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.05); }
 .footer-social .social-link { width: 44px; height: 44px; font-size: 20px; }
-
-@media (max-width: 600px) {
-  .social-links { gap: 12px; }
-  .social-link { width: 44px; height: 44px; font-size: 18px; }
-  .footer-social { gap: 12px; }
-  .footer-social .social-link { width: 40px; height: 40px; font-size: 16px; }
-}over { border-color: #25D366; background: rgba(37, 211, 102, 0.2); }
 
 /* =========================================
    FEATURES
@@ -278,7 +276,7 @@
 .feature-card p { color: var(--text-gray); font-size: 0.95rem; line-height: 1.6; }
 
 /* =========================================
-   MODAL WITH ICONS
+   MODAL
    ========================================= */
 
 .modal-overlay {
@@ -327,7 +325,7 @@
 .form-group { position: relative; }
 .form-group.full { grid-column: 1 / -1; }
 
-/* Input with Icons */
+/* Input Icons */
 .input-icon {
   position: absolute;
   left: 14px; top: 14px;
@@ -405,21 +403,34 @@
 .form-select option { background: #111; }
 textarea.form-input { min-height: 100px; resize: vertical; }
 
-/* Submit Button */
+/* =========================================
+   SUBMIT BUTTON + SHRINK→SPIN ANIMATION
+   ========================================= */
+
 .submit-btn {
   width: 100%;
-  padding: 16px;
+  height: 52px; /* FIX: fixed height so shrink becomes a perfect circle */
+  padding: 0 16px;
   margin-top: 16px;
   background: linear-gradient(135deg, var(--ghana-gold), var(--ghana-green));
-  border: none; border-radius: 10px;
+  border: none;
+  border-radius: 10px;
   color: #000;
   font-family: var(--font-heading);
-  font-size: 1rem; font-weight: 600;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s;
+  /* FIX: single unified transition — width, border-radius, and transform together */
+  transition:
+    width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s ease,
+    box-shadow 0.3s ease;
 }
 
+/* Shine sweep on hover */
 .submit-btn::before {
   content: '';
   position: absolute;
@@ -429,14 +440,73 @@ textarea.form-input { min-height: 100px; resize: vertical; }
   transition: left 0.5s;
 }
 
-.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(250,204,21,0.4); }
-.submit-btn:hover::before { left: 100%; }
-.submit-btn:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
+.submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(250,204,21,0.4); }
+.submit-btn:hover:not(:disabled)::before { left: 100%; }
+.submit-btn:active:not(:disabled) { transform: scale(0.97); }
 
-/* Success Animation */
+/* FIX: disabled only applies when NOT in loading state, so colours don't clash */
+.submit-btn:disabled:not(.submit-btn--loading) {
+  background: #333;
+  color: #666;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Button label text */
+.submit-btn__text {
+  display: inline-block;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Spinner — invisible by default */
+.submit-btn__spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(0, 0, 0, 0.25); /* dark on gold bg */
+  border-top-color: #000;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.2s ease 0.15s, transform 0.2s ease 0.15s;
+  pointer-events: none;
+}
+
+/* ---- LOADING STATE ---- */
+.submit-btn--loading {
+  width: 52px !important;       /* shrink to circle width = height */
+  border-radius: 50% !important;
+  pointer-events: none;
+}
+
+.submit-btn--loading .submit-btn__text {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.submit-btn--loading .submit-btn__spinner {
+  opacity: 1;
+  transform: scale(1);
+  animation: k9x-spin 0.75s linear infinite;
+}
+
+@keyframes k9x-spin {
+  to { transform: scale(1) rotate(360deg); }
+}
+
+/* =========================================
+   SUCCESS ANIMATION
+   ========================================= */
+
 .success-box { text-align: center; padding: 40px 20px; animation: successPop 0.5s ease-out; }
 
-@keyframes successPop { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes successPop {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
 
 .success-icon {
   width: 80px; height: 80px;
@@ -449,7 +519,10 @@ textarea.form-input { min-height: 100px; resize: vertical; }
   animation: successPulse 2s ease-in-out infinite;
 }
 
-@keyframes successPulse { 0%, 100% { box-shadow: 0 0 30px rgba(250, 204, 21, 0.5); } 50% { box-shadow: 0 0 50px rgba(250, 204, 21, 0.8); } }
+@keyframes successPulse {
+  0%, 100% { box-shadow: 0 0 30px rgba(250, 204, 21, 0.5); }
+  50% { box-shadow: 0 0 50px rgba(250, 204, 21, 0.8); }
+}
 
 .success-box h3 {
   font-family: var(--font-heading);
@@ -468,14 +541,20 @@ textarea.form-input { min-height: 100px; resize: vertical; }
    FOOTER
    ========================================= */
 
-.footer { text-align: center; padding: 50px 20px; border-top: 1px solid rgba(255,255,255,0.05); position: relative; z-index: 20; }
+.footer {
+  text-align: center;
+  padding: 50px 20px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  position: relative; z-index: 20;
+}
 
-.footer-logo { display: flex; align-items: center; justify-content: center; gap: 8px; font-family: var(--font-heading); font-size: 1.6rem; color: var(--ghana-gold); margin-bottom: 12px; }
+.footer-logo {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--font-heading); font-size: 1.6rem;
+  color: var(--ghana-gold); margin-bottom: 12px;
+}
+
 .footer p { color: var(--text-gray); font-size: 0.85rem; }
-
-/* Footer Social Links */
-.footer-social { display: flex; justify-content: center; gap: 16px; margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.05); }
-.footer-social .social-link { width: 44px; height: 44px; font-size: 20px; }
 
 /* =========================================
    RESPONSIVE
@@ -492,67 +571,4 @@ textarea.form-input { min-height: 100px; resize: vertical; }
   .features-grid { grid-template-columns: 1fr; }
   .footer-social { gap: 12px; }
   .footer-social .social-link { width: 40px; height: 40px; font-size: 16px; }
-}
-/* =============================================
-   SUBMIT BUTTON — SHRINK → SPIN → EXPAND BACK
-   Add this to your App.css
-   ============================================= */
-
-.submit-btn {
-  position: relative;
-  overflow: hidden;
-  transition:
-    width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.15s ease;
-}
-
-.submit-btn:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-/* Text — fades out when loading */
-.submit-btn__text {
-  display: inline-block;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-/* Spinner — hidden by default */
-.submit-btn__spinner {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 22px;
-  height: 22px;
-  border: 3px solid rgba(255, 255, 255, 0.25);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  opacity: 0;
-  transform: scale(0.5);
-  transition: opacity 0.2s ease 0.15s, transform 0.2s ease 0.15s;
-  animation: none;
-  pointer-events: none;
-}
-
-/* ---- LOADING STATE ---- */
-.submit-btn--loading {
-  /* Shrink to a circle */
-  width: 52px !important;
-  border-radius: 50% !important;
-  pointer-events: none;
-}
-
-.submit-btn--loading .submit-btn__text {
-  opacity: 0;
-  transform: scale(0.7);
-}
-
-.submit-btn--loading .submit-btn__spinner {
-  opacity: 1;
-  transform: scale(1);
-  animation: k9x-spin 0.75s linear infinite;
-}
-
-@keyframes k9x-spin {
-  to { transform: scale(1) rotate(360deg); }
 }
