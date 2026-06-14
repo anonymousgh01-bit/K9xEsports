@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 const VALID_RANKS = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Crown', 'Ace', 'Conqueror'];
 const VALID_DEVICES = ['iPhone', 'Android', 'Tablet'];
+const API_URL = 'https://k9xesports.onrender.com';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@300;400;500;600&display=swap');
@@ -292,9 +293,7 @@ const styles = `
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
   .fg-full { grid-column: 1 / -1; }
 
-  .fg {
-    position: relative;
-  }
+  .fg { position: relative; }
   .fg input, .fg select, .fg textarea {
     width: 100%; background: rgba(255,255,255,0.03);
     border: 1px solid rgba(0,245,255,0.15); color: var(--text);
@@ -354,21 +353,14 @@ const styles = `
   }
   .submit-btn:disabled { cursor: not-allowed; opacity: 0.8; }
 
-  /* charge animation */
   .submit-btn.charging::before {
     content: ''; position: absolute; left: 0; top: 0; bottom: 0;
     background: rgba(255,255,255,0.3);
     animation: charge 0.6s cubic-bezier(0.4,0,0.2,1) forwards;
   }
-  @keyframes charge {
-    from { width: 0; }
-    to { width: 100%; }
-  }
+  @keyframes charge { from { width: 0; } to { width: 100%; } }
 
-  /* spark particles */
-  .sparks {
-    position: absolute; inset: 0; pointer-events: none;
-  }
+  .sparks { position: absolute; inset: 0; pointer-events: none; }
   .spark {
     position: absolute; width: 4px; height: 4px; border-radius: 50%;
     background: var(--cyan);
@@ -390,6 +382,15 @@ const styles = `
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ── ERROR BOX ── */
+  .error-box {
+    margin-top: 12px; padding: 12px 16px;
+    background: rgba(255,0,110,0.08);
+    border: 1px solid rgba(255,0,110,0.3);
+    font-size: 13px; color: #FF6B9D; line-height: 1.5;
+  }
+  .error-box strong { display: block; font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 2px; color: var(--magenta); margin-bottom: 4px; }
+
   /* ── SUCCESS ── */
   .success {
     text-align: center; padding: 20px 0 10px;
@@ -402,7 +403,7 @@ const styles = `
     box-shadow: 0 0 30px rgba(0,245,255,0.3), inset 0 0 20px rgba(0,245,255,0.05);
     animation: pulse 2s infinite;
   }
-  @keyframes pulse { 0%,100% { box-shadow: 0 0 30px rgba(0,245,255,0.3), inset 0 0 20px rgba(0,245,255,0.05); } 50% { box-shadow: 0 0 50px rgba(0,245,255,0.5), inset 0 0 30px rgba(0,245,255,0.1); } }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 30px rgba(0,245,255,0.3); } 50% { box-shadow: 0 0 50px rgba(0,245,255,0.5); } }
   .success-check { font-size: 36px; }
   .success h3 {
     font-family: 'Orbitron', monospace; font-size: 22px; font-weight: 900;
@@ -433,7 +434,6 @@ const styles = `
   }
   .footer-link:hover { color: var(--cyan); }
 
-  /* ── SCROLLBAR ── */
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: var(--void); }
   ::-webkit-scrollbar-thumb { background: rgba(0,245,255,0.3); border-radius: 2px; }
@@ -447,7 +447,6 @@ const styles = `
     .form-grid { grid-template-columns: 1fr; }
     .fg-full { grid-column: 1; }
     .modal-inner { padding: 28px 24px 28px; }
-    .footer { flex-direction: column; align-items: flex-start; }
     .modal { clip-path: none; }
   }
 `;
@@ -457,25 +456,17 @@ function SparkParticles({ active }) {
   const sparks = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 12) * 360;
     const dist = 40 + Math.random() * 40;
-    const sx = Math.cos((angle * Math.PI) / 180) * dist + 'px';
-    const sy = Math.sin((angle * Math.PI) / 180) * dist + 'px';
-    return { id: i, sx, sy, delay: Math.random() * 0.1 };
+    return {
+      id: i,
+      sx: Math.cos((angle * Math.PI) / 180) * dist + 'px',
+      sy: Math.sin((angle * Math.PI) / 180) * dist + 'px',
+      delay: Math.random() * 0.1,
+    };
   });
-
   return (
     <div className="sparks">
       {sparks.map(s => (
-        <div
-          key={s.id}
-          className="spark"
-          style={{
-            '--sx': s.sx,
-            '--sy': s.sy,
-            left: '50%',
-            top: '50%',
-            animationDelay: `${s.delay}s`,
-          }}
-        />
+        <div key={s.id} className="spark" style={{ '--sx': s.sx, '--sy': s.sy, left: '50%', top: '50%', animationDelay: `${s.delay}s` }} />
       ))}
     </div>
   );
@@ -507,22 +498,11 @@ function Hero({ onJoin }) {
       <p className="hero-sub">
         Represent Ghana on the global stage. Join the premier PUBG Mobile esports organization. Compete, conquer, and bring glory to the homeland.
       </p>
-      <button className="hero-cta" onClick={onJoin}>
-        ⚔ Join K9x Now
-      </button>
+      <button className="hero-cta" onClick={onJoin}>⚔ Join K9x Now</button>
       <div className="hero-stats">
-        <div className="stat">
-          <span className="stat-num">50+</span>
-          <span className="stat-label">Active Players</span>
-        </div>
-        <div className="stat">
-          <span className="stat-num">12</span>
-          <span className="stat-label">Tournaments</span>
-        </div>
-        <div className="stat">
-          <span className="stat-num">#1</span>
-          <span className="stat-label">Ghana Roster</span>
-        </div>
+        <div className="stat"><span className="stat-num">50+</span><span className="stat-label">Active Players</span></div>
+        <div className="stat"><span className="stat-num">12</span><span className="stat-label">Tournaments</span></div>
+        <div className="stat"><span className="stat-num">#1</span><span className="stat-label">Ghana Roster</span></div>
       </div>
     </section>
   );
@@ -558,13 +538,22 @@ function RecruitModal({ isOpen, onClose }) {
   const [success, setSuccess] = useState(false);
   const [charging, setCharging] = useState(false);
   const [sparks, setSparks] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (isOpen) { setSuccess(false); setSubmitting(false); setCharging(false); setSparks(false); }
+    if (isOpen) {
+      setSuccess(false);
+      setSubmitting(false);
+      setCharging(false);
+      setSparks(false);
+      setError(null);
+    }
   }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
+
     // Trigger charge + spark animation
     setCharging(true);
     setSparks(true);
@@ -577,36 +566,74 @@ function RecruitModal({ isOpen, onClose }) {
     const rawDevice = form.device.value;
 
     if (isNaN(rawAge) || rawAge < 16 || rawAge > 40) {
-      alert('Age must be between 16 and 40.'); return;
+      setError({ title: 'Invalid Age', msg: 'Age must be between 16 and 40.' });
+      return;
     }
-    if (!VALID_RANKS.includes(rawRank)) { alert('Please select a valid rank.'); return; }
-    if (!VALID_DEVICES.includes(rawDevice)) { alert('Please select a valid device.'); return; }
+    if (!VALID_RANKS.includes(rawRank)) {
+      setError({ title: 'Invalid Rank', msg: 'Please select a valid rank.' });
+      return;
+    }
+    if (!VALID_DEVICES.includes(rawDevice)) {
+      setError({ title: 'Invalid Device', msg: 'Please select a valid device.' });
+      return;
+    }
 
     const formData = {
       pubgName: form.pubgName.value.trim(),
       pubgUid: form.pubgUid.value.trim(),
-      age: rawAge, rank: rawRank, device: rawDevice,
+      age: rawAge,
+      rank: rawRank,
+      device: rawDevice,
       whatsapp: form.whatsapp.value.trim(),
       why: form.why.value.trim(),
     };
 
     setSubmitting(true);
+
+    // Abort after 20 seconds
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+
     try {
-      const res = await fetch('https://k9xesports.onrender.com/api/apply', {
+      const res = await fetch(`${API_URL}/api/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
+        signal: controller.signal,
       });
-      const result = await res.json();
+
+      clearTimeout(timeout);
+
+      let result;
+      try {
+        result = await res.json();
+      } catch {
+        throw new Error(`Server returned status ${res.status} with no JSON body.`);
+      }
+
       if (res.ok && result.success) {
         setSuccess(true);
         form.reset();
         setTimeout(onClose, 2800);
       } else {
-        alert(result.error || 'Submission failed. Please try again.');
+        setError({
+          title: 'Submission Failed',
+          msg: result.error || `Server responded with status ${res.status}.`,
+        });
       }
     } catch (err) {
-      alert(`Connection failed.\n\n${err.message}`);
+      clearTimeout(timeout);
+      if (err.name === 'AbortError') {
+        setError({
+          title: 'Request Timed Out',
+          msg: 'The server took too long to respond. It may be waking up — please wait 30 seconds and try again.',
+        });
+      } else {
+        setError({
+          title: 'Connection Failed',
+          msg: `Could not reach the server. Check your internet connection and try again.\n\nDetails: ${err.message}`,
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -668,6 +695,13 @@ function RecruitModal({ isOpen, onClose }) {
                   </div>
                 </div>
 
+                {error && (
+                  <div className="error-box">
+                    <strong>{error.title}</strong>
+                    {error.msg}
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   className={`submit-btn${charging ? ' charging' : ''}`}
@@ -675,11 +709,10 @@ function RecruitModal({ isOpen, onClose }) {
                 >
                   <SparkParticles active={sparks} />
                   <span className="btn-text">
-                    {submitting ? (
-                      <><div className="spinner" /> Transmitting...</>
-                    ) : (
-                      '⚡ Submit Application'
-                    )}
+                    {submitting
+                      ? <><div className="spinner" /> Transmitting...</>
+                      : '⚡ Submit Application'
+                    }
                   </span>
                 </button>
               </form>
@@ -690,9 +723,12 @@ function RecruitModal({ isOpen, onClose }) {
                 <span className="success-check">✓</span>
               </div>
               <h3>Welcome to K9x</h3>
-              <p>Application received. We'll reach out via WhatsApp soon.<br /><br />
+              <p>
+                Application received. We'll reach out via WhatsApp soon.<br /><br />
                 Join our Discord for updates:{' '}
-                <a href="https://discord.gg/YOUR_REAL_INVITE" target="_blank" rel="noopener noreferrer">discord.gg/k9x</a>
+                <a href="https://discord.gg/YOUR_REAL_INVITE" target="_blank" rel="noopener noreferrer">
+                  discord.gg/k9x
+                </a>
               </p>
             </div>
           )}
