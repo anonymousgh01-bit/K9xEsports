@@ -21,14 +21,24 @@ const VALID_DEVICES = ['iPhone', 'Android', 'Tablet'];
 // Trust Render's proxy so express-rate-limit can read the real client IP
 app.set('trust proxy', 1);
 
-// FIX: Lock CORS to your deployed frontend domain instead of wildcard
-app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+// CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://k9xesports.onrender.com',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 app.use(express.json({ limit: '10kb' }));
 
 // Rate limiting on the apply endpoint to prevent spam
 const applyLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,                    // max 5 applications per IP per window
+  max: 10,                   // max 10 applications per IP per window (increased from 5)
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false },
@@ -56,7 +66,9 @@ const Recruit = mongoose.model('Recruit', recruitSchema);
 // MONGODB CONNECTION (with retry)
 // ========================
 const connectWithRetry = () => {
-  mongoose.connect(process.env.MONGODB_URI)
+  mongoose.connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 5000
+  })
     .then(() => console.log('✅ MongoDB Connected'))
     .catch(err => {
       console.error('❌ MongoDB connection failed:', err.message);
@@ -69,13 +81,19 @@ connectWithRetry();
 // ========================
 // EMAIL
 // ========================
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_EMAIL,
-    pass: process.env.GMAIL_APP_PASSWORD
-  }
-});
+let transporter = null;
+if (process.env.GMAIL_EMAIL && process.env.GMAIL_APP_PASSWORD) {
+  transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_EMAIL,
+      pass: process.env.GMAIL_APP_PASSWORD
+    }
+  });
+  console.log('📧 Email configured');
+} else {
+  console.log('⚠️ Email not configured - skipping email notifications');
+}
 
 function createEmailHtml(data) {
   const rankIcons = {
@@ -121,7 +139,7 @@ function createEmailHtml(data) {
   </div></div>
   <div style="padding:25px;text-align:center;background:#080808;color:#FACC15;font-weight:700">
   ★ K9x ESPORTS - ${new Date().toLocaleString()}</div>
-  </td></tr></table></body></html>`;
+  </td></td></body></html>`;
 }
 
 // ========================
@@ -146,6 +164,8 @@ app.get('/api/health', (req, res) => {
 
 app.post('/api/apply', applyLimiter, async (req, res) => {
   try {
+    console.log('📥 Received application:', req.body.pubgName);
+    
     const { pubgName, pubgUid, age, rank, device, whatsapp, why } = req.body;
 
     // Validate all required fields are present
@@ -178,12 +198,12 @@ app.post('/api/apply', applyLimiter, async (req, res) => {
       why:      sanitize(why, 500),
     };
 
-    // FIX: Validate pubgUid format server-side (mirrors frontend pattern)
+    // Validate pubgUid format server-side
     if (!/^\d{8,}$/.test(sanitizedData.pubgUid)) {
       return res.status(400).json({ error: 'UID must be at least 8 digits and contain only numbers.' });
     }
 
-    // FIX: Validate WhatsApp number format
+    // Validate WhatsApp number format
     if (!/^\+?\d{7,15}$/.test(sanitizedData.whatsapp)) {
       return res.status(400).json({ error: 'Invalid WhatsApp number. Use digits only, optionally starting with +.' });
     }
@@ -191,31 +211,31 @@ app.post('/api/apply', applyLimiter, async (req, res) => {
     // Save to MongoDB
     const recruit = new Recruit(sanitizedData);
     await recruit.save();
-    console.log('✅ Saved:', sanitizedData.pubgName);
+    console.log('✅ Saved to DB:', sanitizedData.pubgName);
 
-    // FIX: Email is best-effort — a failure here won't 500 the user
-    try {
-      if (process.env.GMAIL_EMAIL && process.env.GMAIL_APP_PASSWORD) {
+    // Send email (best-effort)
+    if (transporter) {
+      try {
         await transporter.sendMail({
           from: process.env.GMAIL_EMAIL,
           to: process.env.GMAIL_EMAIL,
           subject: `⚔️ ${sanitizedData.pubgName} [${sanitizedData.rank}] - K9x Application`,
           html: createEmailHtml(sanitizedData)
         });
-        console.log('📧 Email sent');
+        console.log('📧 Email sent successfully');
+      } catch (emailErr) {
+        console.error('📧 Email failed (recruit still saved):', emailErr.message);
       }
-    } catch (emailErr) {
-      console.error('📧 Email failed (recruit still saved):', emailErr.message);
     }
 
     res.status(200).json({ success: true, message: 'Application submitted!' });
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('❌ Error saving application:', error.message);
     res.status(500).json({ error: 'Failed to submit. Please try again.' });
   }
 });
 
-// FIX: Protected with admin key — add ADMIN_KEY to your .env
+// Protected endpoint to view recruits
 app.get('/api/recruits', async (req, res) => {
   if (req.headers['x-admin-key'] !== process.env.ADMIN_KEY) {
     return res.status(401).json({ error: 'Unauthorized.' });
@@ -229,8 +249,23 @@ app.get('/api/recruits', async (req, res) => {
 });
 
 // ========================
+// KEEP-ALIVE FUNCTION (prevents Render from sleeping too aggressively)
+// ========================
+if (process.env.NODE_ENV === 'production') {
+  const keepAlive = () => {
+    const url = `http://localhost:${PORT}/api/health`;
+    fetch(url).catch(() => {});
+    console.log('💓 Keep-alive ping sent at', new Date().toTimeString());
+  };
+  // Ping every 10 minutes to keep the server somewhat warm
+  setInterval(keepAlive, 10 * 60 * 1000);
+  console.log('⏰ Keep-alive scheduled every 10 minutes');
+}
+
+// ========================
 // START SERVER
 // ========================
 app.listen(PORT, () => {
   console.log(`🚀 K9x Backend running on port: ${PORT}`);
+  console.log(`📡 Health check: http://localhost:${PORT}/api/health`);
 });
