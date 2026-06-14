@@ -271,8 +271,13 @@ function RecruitModal({ isOpen, onClose }) {
                 </div>
               </div>
 
-              <button type="submit" className="submit-btn" disabled={isSubmitting}>
-                {isSubmitting ? '⏳ Submitting...' : '🚀 Submit Application'}
+              <button
+                type="submit"
+                className={`submit-btn${isSubmitting ? ' submit-btn--loading' : ''}`}
+                disabled={isSubmitting}
+              >
+                <span className="submit-btn__text">🚀 Submit Application</span>
+                <span className="submit-btn__spinner" aria-hidden="true"></span>
               </button>
             </form>
           </>
